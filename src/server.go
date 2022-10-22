@@ -19,7 +19,9 @@ var bindAddr = flag.String("b", ":9500", "Which address to bind to")
 var server = flag.String("s", "https://mangasee123.com/", "Server to connect to, Mangasee or Manga4Life")
 var procs = flag.Int("procs", 100, "Number of processes used for scanning")
 var interval = flag.Int("i", 2, "Interval between scans in minutes")
+
 var verbose = flag.Bool("v", false, "Verbose output")
+var timing = flag.Bool("t", false, "Time the scan")
 var clearcache = flag.Bool("c", false, "Clear the cache")
 
 var (

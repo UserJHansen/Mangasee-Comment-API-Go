@@ -74,8 +74,10 @@ func scanAllManga() error {
 	}
 	wg.Wait()
 
-	fmt.Printf("[COMMENT-CACHE] Took %ds to scan %d mangas\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds(), len(mangas))
-	fmt.Printf("[COMMENT-CACHE] That's an average of %dμs per manga\n", (time.Now().UnixMicro()-start)/int64(len(mangas)))
+	if *timing {
+		fmt.Printf("[COMMENT-CACHE] Took %ds to scan %d mangas\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds(), len(mangas))
+		fmt.Printf("[COMMENT-CACHE] That's an average of %dμs per manga\n", (time.Now().UnixMicro()-start)/int64(len(mangas)))
+	}
 
 	scanTime.WithLabelValues("manga").Set(float64((time.Now().UnixMicro() - start) / time.Millisecond.Microseconds()))
 	numManga.Set(float64(len(mangas)))
@@ -103,8 +105,10 @@ func scanAllManga() error {
 	}
 	wg.Wait()
 
-	fmt.Printf("[COMMENT-CACHE] Took %ds to get replies for %d comments\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds(), numberRequests)
-	fmt.Printf("[COMMENT-CACHE] That's an average of %dμs per reply\n", (time.Now().UnixMicro()-start)/int64(numberRequests))
+	if *timing {
+		fmt.Printf("[COMMENT-CACHE] Took %ds to get replies for %d comments\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds(), numberRequests)
+		fmt.Printf("[COMMENT-CACHE] That's an average of %dμs per reply\n", (time.Now().UnixMicro()-start)/int64(numberRequests))
+	}
 
 	// create a rough map of UserIDs to usernames
 	start = time.Now().UnixMicro()
@@ -124,7 +128,9 @@ func scanAllManga() error {
 		}
 	}
 
-	fmt.Printf("[COMMENT-CACHE] Took %dms to extract usernames\n", (time.Now().UnixMicro()-start)/time.Millisecond.Microseconds())
+	if *timing {
+		fmt.Printf("[COMMENT-CACHE] Took %dms to extract usernames\n", (time.Now().UnixMicro()-start)/time.Millisecond.Microseconds())
+	}
 
 	start = time.Now().UnixMicro()
 	// Deduplicate the map and update Prom
@@ -141,7 +147,9 @@ func scanAllManga() error {
 	userNo.Add(float64(len(userMap)) - userCounterVal)
 	userCounterVal = float64(len(userMap))
 
-	fmt.Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d users\n", time.Now().UnixMicro()-start, len(userMap))
+	if *timing {
+		fmt.Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d users\n", time.Now().UnixMicro()-start, len(userMap))
+	}
 
 	start = time.Now().UnixMicro()
 	// Create a proper tree of comments and replies
@@ -152,7 +160,9 @@ func scanAllManga() error {
 
 	cleanComments()
 
-	fmt.Printf("[COMMENT-CACHE] Took %dms to create a proper tree of comments and replies\n", (time.Now().UnixMicro()-start)/time.Millisecond.Microseconds())
+	if *timing {
+		fmt.Printf("[COMMENT-CACHE] Took %dms to create a proper tree of comments and replies\n", (time.Now().UnixMicro()-start)/time.Millisecond.Microseconds())
+	}
 
 	// Write to file
 	return save()

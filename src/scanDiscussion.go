@@ -71,7 +71,9 @@ func scanAllDiscussions() error {
 		fmt.Println("[COMMENT-CACHE] Error decoding Discussion list:", err)
 		return err
 	}
-	fmt.Printf("[COMMENT-CACHE] Took %ds to get discussion list\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds())
+	if *timing {
+		fmt.Printf("[COMMENT-CACHE] Took %ds to get discussion list\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds())
+	}
 
 	// Get and deduplicate discussion ids
 	ids := make(map[uint32]bool)
@@ -135,8 +137,10 @@ func scanAllDiscussions() error {
 	}
 	wg.Wait()
 
-	fmt.Printf("[COMMENT-CACHE] Took %ds to scan %d discussions\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds(), len(discussionIds))
-	fmt.Printf("[COMMENT-CACHE] That's an average of %dμs per discussion\n", (time.Now().UnixMicro()-start)/int64(len(rawDiscussions)))
+	if *timing {
+		fmt.Printf("[COMMENT-CACHE] Took %ds to scan %d discussions\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds(), len(discussionIds))
+		fmt.Printf("[COMMENT-CACHE] That's an average of %dμs per discussion\n", (time.Now().UnixMicro()-start)/int64(len(rawDiscussions)))
+	}
 
 	scanTime.WithLabelValues("discussion").Set(float64((time.Now().UnixMicro() - start) / time.Millisecond.Microseconds()))
 
@@ -163,8 +167,10 @@ func scanAllDiscussions() error {
 	}
 	wg.Wait()
 
-	fmt.Printf("[COMMENT-CACHE] Took %dms to get replies for %d comments\n", (time.Now().UnixMicro()-start)/time.Millisecond.Microseconds(), numberRequests)
-	fmt.Printf("[COMMENT-CACHE] That's an average of %dμs per reply\n", (time.Now().UnixMicro()-start)/int64(numberRequests))
+	if *timing {
+		fmt.Printf("[COMMENT-CACHE] Took %dms to get replies for %d comments\n", (time.Now().UnixMicro()-start)/time.Millisecond.Microseconds(), numberRequests)
+		fmt.Printf("[COMMENT-CACHE] That's an average of %dμs per reply\n", (time.Now().UnixMicro()-start)/int64(numberRequests))
+	}
 
 	// create a rough map of UserIDs to usernames
 	start = time.Now().UnixMicro()
@@ -183,7 +189,9 @@ func scanAllDiscussions() error {
 		}
 	}
 
-	fmt.Printf("[COMMENT-CACHE] Took %dμs to extract usernames\n", time.Now().UnixMicro()-start)
+	if *timing {
+		fmt.Printf("[COMMENT-CACHE] Took %dμs to extract usernames\n", time.Now().UnixMicro()-start)
+	}
 
 	start = time.Now().UnixMicro()
 	// Deduplicate the map and update Prom
@@ -200,7 +208,9 @@ func scanAllDiscussions() error {
 	userNo.Add(float64(len(userMap)) - userCounterVal)
 	userCounterVal = float64(len(userMap))
 
-	fmt.Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d users\n", time.Now().UnixMicro()-start, len(userMap))
+	if *timing {
+		fmt.Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d users\n", time.Now().UnixMicro()-start, len(userMap))
+	}
 
 	start = time.Now().UnixMicro()
 	// Create a proper tree of comments and replies
@@ -211,7 +221,9 @@ func scanAllDiscussions() error {
 
 	cleanComments()
 
-	fmt.Printf("[COMMENT-CACHE] Took %dμs to create a proper tree of comments and replies\n", time.Now().UnixMicro()-start)
+	if *timing {
+		fmt.Printf("[COMMENT-CACHE] Took %dμs to create a proper tree of comments and replies\n", time.Now().UnixMicro()-start)
+	}
 
 	start = time.Now().UnixMicro()
 
@@ -226,7 +238,9 @@ func scanAllDiscussions() error {
 	}
 	discussions = dedupedDiscussions
 
-	fmt.Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d discussions\n", time.Now().UnixMicro()-start, len(discussions))
+	if *timing {
+		fmt.Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d discussions\n", time.Now().UnixMicro()-start, len(discussions))
+	}
 
 	// Write to file
 	return save()
