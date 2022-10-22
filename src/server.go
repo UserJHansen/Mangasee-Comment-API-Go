@@ -17,13 +17,16 @@ var saveLoc = flag.String("o", "cache.json", "location where the cache will be s
 var withProm = flag.Bool("p", true, "Will prometheus be included")
 var bindAddr = flag.String("b", ":9500", "Which address to bind to")
 var server = flag.String("s", "https://mangasee123.com/", "Server to connect to, Mangasee or Manga4Life")
-var procs = flag.Int("procs", 50, "Number of processes used for scanning")
+var procs = flag.Int("procs", 100, "Number of processes used for scanning")
 var interval = flag.Int("i", 2, "Interval between scans in minutes")
 var verbose = flag.Bool("v", false, "Verbose output")
+var clearcache = flag.Bool("c", false, "Clear the cache")
 
 var (
-	comments = []Comment{}
-	userMap  = []Username{}
+	comments      = []Comment{}
+	userMap       = []Username{}
+	discussions   = []Discussion{}
+	discussionIds = []uint32{}
 )
 
 func main() {
@@ -31,8 +34,10 @@ func main() {
 	flag.Parse()
 
 	// Load from cache file
-	if err := load(); err != nil {
-		log.Fatal(err)
+	if !*clearcache {
+		if err := load(); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	// Make sure that we can save

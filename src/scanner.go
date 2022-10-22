@@ -7,9 +7,18 @@ import (
 
 func spawnScanner() {
 	go func() {
-		if err := scanAllManga(); err != nil {
-			fmt.Println("[COMMENT-CACHE] failed to scan for comments:", err)
+		for {
+			if err := scanAllDiscussions(); err != nil {
+				fmt.Println("[COMMENT-CACHE] failed to scan for discussions:", err)
+
+				numErrors.Add(1)
+			}
+			if err := scanAllManga(); err != nil {
+				fmt.Println("[COMMENT-CACHE] failed to scan for comments:", err)
+
+				numErrors.Add(1)
+			}
+			time.Sleep(time.Duration(*interval * int(time.Minute.Nanoseconds())))
 		}
-		time.Sleep(time.Duration(*interval * int(time.Minute.Nanoseconds())))
 	}()
 }

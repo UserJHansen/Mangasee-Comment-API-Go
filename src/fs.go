@@ -9,10 +9,13 @@ import (
 // Save to the cache file
 func save() error {
 	json, err := json.MarshalIndent(&SaveFile{
-		Comments: comments,
-		Users:    userMap,
+		Comments:      comments,
+		Users:         userMap,
+		Discussions:   discussions,
+		DiscussionIds: discussionIds,
 	}, "", "  ")
 	if err != nil {
+		numErrors.Add(1)
 		return err
 	}
 
@@ -28,6 +31,7 @@ func load() error {
 			return nil
 		}
 
+		numErrors.Add(1)
 		return err
 	}
 	var saveData SaveFile
@@ -37,6 +41,8 @@ func load() error {
 	}
 	comments = saveData.Comments
 	userMap = saveData.Users
+	discussions = saveData.Discussions
+	discussionIds = saveData.DiscussionIds
 
 	fmt.Println("[COMMENT-CACHE] Reading Config")
 	return nil

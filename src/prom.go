@@ -30,15 +30,20 @@ var (
 			Help: "Total number of Users cached.",
 		})
 	userCounterVal = 0.0
-	scanTime       = promauto.NewGauge(
+	scanTime       = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "scan_time",
 			Help: "Time taken to scan for new manga/comments in milliseconds",
-		})
+		}, []string{"type"})
 	numManga = promauto.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "number_manga",
 			Help: "Number of manga in cache ",
+		})
+	numErrors = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "errors_total",
+			Help: "Total number of errors encountered.",
 		})
 )
 
