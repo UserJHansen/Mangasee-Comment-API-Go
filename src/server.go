@@ -20,7 +20,7 @@ import (
 var saveLoc = flag.String("o", "cache.json", "location where the cache will be stored")
 
 var withProm = flag.Bool("p", true, "Will prometheus be included")
-var bindAddr = flag.String("b", ":9500", "Which address to bind to")
+var secure = flag.Bool("secure", false, "Whether to use https or not")
 var server = flag.String("s", "https://mangasee123.com/", "Server to connect to, Mangasee or Manga4Life")
 
 var procs = flag.Int("procs", 100, "Number of processes used for scanning")
@@ -44,7 +44,7 @@ var (
 func main() {
 	// Load cli flags
 	flag.Parse()
-	
+
 	if !*ignorePID {
 		fmt.Println("Creating PID file at:", *pidLoc)
 		if err := pidfile.Write(*pidLoc); err != nil {
@@ -55,7 +55,6 @@ func main() {
 			panic(fmt.Sprintf("Failed to create PIDFile: %s\n", err.Error()))
 		}
 	}
-
 
 	// Load from cache file
 	if !*clearcache {
@@ -78,21 +77,8 @@ func main() {
 	// Get gin
 	r := gin.New()
 	r.Use(gin.Recovery())
-	r.Use(gin.LoggerWithConfig(gin.LoggerConfig{
-		Formatter: func(param gin.LogFormatterParams) string {
-			return fmt.Sprintf("%s - - [%s] \"%s %s %s %s\" %d %d \"%s\" \"%s\"\n",
-				param.ClientIP,
-				param.TimeStamp.Format("02/Jan/2006:15:04:05 -0700"),
-				param.Method,
-				param.Path,
-				param.Request.Proto,
-				param.ErrorMessage,
-				param.StatusCode,
-				param.BodySize,
-				param.Request.URL,
-				param.Request.UserAgent(),
-			)
-		}}))
+	r.Use(gin.Logger())
+	_ = r.SetTrustedProxies(nil)
 
 	// Prom setup
 	getProm(r)
@@ -130,7 +116,7 @@ func main() {
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-shutdown
-		_ = pidfile.Remove("comment-cache.pid")
+		_ = pidfile.Remove(*pidLoc)
 		if err := save(); err != nil {
 			log.Fatal("Failed to save:", err)
 		}
@@ -138,5 +124,9 @@ func main() {
 		os.Exit(0)
 	}()
 
-	log.Fatal(r.Run(*bindAddr))
+	if (*secure) {
+		setupTls(r)
+	} else {
+		log.Fatal(r.Run(":8080"))
+	}
 }
