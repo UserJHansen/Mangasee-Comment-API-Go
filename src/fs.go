@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 )
 
@@ -19,7 +18,7 @@ func save() error {
 		return err
 	}
 
-	fmt.Println("[COMMENT-CACHE] Saving to file")
+	Println("[COMMENT-CACHE] Saving to file")
 	return os.WriteFile(*saveLoc, json, 0644)
 }
 
@@ -44,6 +43,6 @@ func load() error {
 	discussions = saveData.Discussions
 	discussionIds = saveData.DiscussionIds
 
-	fmt.Println("[COMMENT-CACHE] Reading Config")
+	Println("[COMMENT-CACHE] Reading Config")
 	return nil
 }

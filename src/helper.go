@@ -2,7 +2,12 @@ package main
 
 import "strconv"
 
-func conv[T uint | int | uint8 | uint16 | uint32 | uint64 | int8 | int16 | int32 | int64](str string) T {
+func conv[T uint | int | uint8 | uint16 | uint32 | uint64 | int8 | int16 | int32 | int64](str string) (T, error) {
+	val, err := strconv.Atoi(str)
+	return T(val), err
+}
+
+func unsafeConv[T uint | int | uint8 | uint16 | uint32 | uint64 | int8 | int16 | int32 | int64](str string) T {
 	val, _ := strconv.Atoi(str)
 	return T(val)
 }

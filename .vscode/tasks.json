@@ -6,22 +6,42 @@
         {
             "label": "Build",
             "type": "shell",
-            "command": "go build -o ./bin/ -race ./src",
+            "command": "go build -o ./bin/comment-cache ./src",
             "problemMatcher": [],
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            }
+            "group": "build"
         },
         {
             "label": "Build: Windows",
             "type": "shell",
-            "command": "GOOS=windows GOARCH=amd64 go build -o ./bin/ ./src",
+            "command": "GOOS=windows GOARCH=amd64 go build -o ./bin/comment-cache.exe ./src",
             "problemMatcher": [],
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            }
+            "group": "build"
+        },
+        {
+            "label": "Install",
+            "dependsOn": [
+                "Build"
+            ],
+            "type": "shell",
+            "command": "sudo rm -v /usr/local/bin/comment-cache && sudo mv -v ./bin/comment-cache /usr/local/bin && sudo chown root:root /usr/local/bin/comment-cache",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "group": "build"
+        },
+        {
+            "label": "Start service",
+            "dependsOn": [
+                "Install"
+            ],
+            "type": "shell",
+            "command": "sudo systemctl restart comment-cache",
+            "group": "build"
         }
     ]
 }

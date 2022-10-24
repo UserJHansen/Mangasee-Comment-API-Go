@@ -3,8 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -23,14 +23,14 @@ func scanManga(manga SearchResponse) ([]RawComment, error) {
 		bytes.NewBuffer(json_data))
 
 	if err != nil {
-		fmt.Printf("[COMMENT-CACHE] Error reading comments for: %s, error: %s\n", manga.IndexName, err)
+		Printf("[COMMENT-CACHE] Error reading comments for: %s, error: %s\n", manga.IndexName, err)
 		return nil, err
 	}
 
 	res, err := decodeResponse[[]RawComment](resp, nil)
 
 	if err != nil {
-		fmt.Printf("[COMMENT-CACHE] Error reading comments for: %s, error: %s\n", manga.IndexName, err)
+		Printf("[COMMENT-CACHE] Error reading comments for: %s, error: %s\n", manga.IndexName, err)
 		return nil, err
 	}
 
@@ -39,17 +39,17 @@ func scanManga(manga SearchResponse) ([]RawComment, error) {
 
 func scanAllManga() error {
 	start := time.Now().UnixMicro()
-	fmt.Println("[COMMENT-CACHE] Starting manga scan...")
+	Println("[COMMENT-CACHE] Starting manga scan...")
 	resp, err := http.Get(*server + "_search.php")
 	if err != nil {
-		fmt.Println("[COMMENT-CACHE] Error getting Manga:", err)
+		Println("[COMMENT-CACHE] Error getting Manga:", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	var mangas []SearchResponse
 	if err := json.NewDecoder(resp.Body).Decode(&mangas); err != nil {
-		fmt.Println("[COMMENT-CACHE] Error decoding Manga:", err)
+		Println("[COMMENT-CACHE] Error decoding Manga:", err)
 		return err
 	}
 	var wg sync.WaitGroup
@@ -62,7 +62,7 @@ func scanAllManga() error {
 			result, err := scanManga(manga)
 			if err == nil {
 				if *verbose {
-					fmt.Printf("[COMMENT-CACHE] (%d/%d) Successfully scanned %s\n", i, len(mangas), manga.IndexName)
+					Printf("[COMMENT-CACHE] (%d/%d) Successfully scanned %s\n", i, len(mangas), manga.IndexName)
 				}
 				commentResults[i] = result
 			} else {
@@ -75,8 +75,8 @@ func scanAllManga() error {
 	wg.Wait()
 
 	if *timing {
-		fmt.Printf("[COMMENT-CACHE] Took %ds to scan %d mangas\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds(), len(mangas))
-		fmt.Printf("[COMMENT-CACHE] That's an average of %dμs per manga\n", (time.Now().UnixMicro()-start)/int64(len(mangas)))
+		Printf("[COMMENT-CACHE] Took %ds to scan %d mangas\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds(), len(mangas))
+		Printf("[COMMENT-CACHE] That's an average of %dμs per manga\n", (time.Now().UnixMicro()-start)/int64(len(mangas)))
 	}
 
 	scanTime.WithLabelValues("manga").Set(float64((time.Now().UnixMicro() - start) / time.Millisecond.Microseconds()))
@@ -89,25 +89,25 @@ func scanAllManga() error {
 		for _, comment := range manga {
 			if int16(len(comment.Replies)) > comment.ReplyLimit {
 				wg.Add(1)
+				numberRequests++
 				guard <- struct{}{}
-				go func(name string, comment *RawComment) {
-					err = getReplies(comment, "manga/reply.get.php")
+				go func(name string, comment RawComment) {
+					err := getReplies(comment, "manga/reply.get.php")
 					if err != nil {
 						numErrors.Add(1)
-						fmt.Printf("[COMMENT-CACHE] On %s, err: %s\n", name, err)
+						Printf("[COMMENT-CACHE] On %s, err: %s\n", name, err)
 					}
-					numberRequests++
 					<-guard
 					wg.Done()
-				}(mangas[i].IndexName, &comment)
+				}(mangas[i].IndexName, comment)
 			}
 		}
 	}
 	wg.Wait()
 
 	if *timing {
-		fmt.Printf("[COMMENT-CACHE] Took %ds to get replies for %d comments\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds(), numberRequests)
-		fmt.Printf("[COMMENT-CACHE] That's an average of %dμs per reply\n", (time.Now().UnixMicro()-start)/int64(numberRequests))
+		Printf("[COMMENT-CACHE] Took %ds to get replies for %d comments\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds(), numberRequests)
+		Printf("[COMMENT-CACHE] That's an average of %dμs per reply\n", (time.Now().UnixMicro()-start)/int64(numberRequests))
 	}
 
 	// create a rough map of UserIDs to usernames
@@ -117,19 +117,19 @@ func scanAllManga() error {
 		for _, comment := range manga {
 			for _, reply := range comment.Replies {
 				newMap = append(newMap, Username{
-					ID:   conv[uint32](reply.UserID),
+					ID:   unsafeConv[uint32](reply.UserID),
 					Name: reply.Username,
 				})
 			}
 			newMap = append(newMap, Username{
-				ID:   conv[uint32](comment.UserID),
+				ID:   unsafeConv[uint32](comment.UserID),
 				Name: comment.Username,
 			})
 		}
 	}
 
 	if *timing {
-		fmt.Printf("[COMMENT-CACHE] Took %dms to extract usernames\n", (time.Now().UnixMicro()-start)/time.Millisecond.Microseconds())
+		Printf("[COMMENT-CACHE] Took %dms to extract usernames\n", (time.Now().UnixMicro()-start)/time.Millisecond.Microseconds())
 	}
 
 	start = time.Now().UnixMicro()
@@ -148,20 +148,20 @@ func scanAllManga() error {
 	userCounterVal = float64(len(userMap))
 
 	if *timing {
-		fmt.Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d users\n", time.Now().UnixMicro()-start, len(userMap))
+		Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d users\n", time.Now().UnixMicro()-start, len(userMap))
 	}
 
 	start = time.Now().UnixMicro()
 	// Create a proper tree of comments and replies
 	for i, manga := range commentResults {
-		commentArr := decodeComments(manga, 0, mangas[i].IndexName)
+		commentArr := decodeComments(manga, 0, strings.ToLower(mangas[i].IndexName))
 		comments = append(comments, commentArr...)
 	}
 
 	cleanComments()
 
 	if *timing {
-		fmt.Printf("[COMMENT-CACHE] Took %dms to create a proper tree of comments and replies\n", (time.Now().UnixMicro()-start)/time.Millisecond.Microseconds())
+		Printf("[COMMENT-CACHE] Took %dms to create a proper tree of comments and replies\n", (time.Now().UnixMicro()-start)/time.Millisecond.Microseconds())
 	}
 
 	// Write to file

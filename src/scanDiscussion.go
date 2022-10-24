@@ -42,14 +42,14 @@ func scanDiscussion(id uint32) (RawDiscussion, error) {
 		bytes.NewBuffer(json_data))
 
 	if err != nil {
-		fmt.Printf("[COMMENT-CACHE] Error reading comments for: %d, error: %s\n", id, err)
+		Printf("[COMMENT-CACHE] Error reading comments for: %d, error: %s\n", id, err)
 		return RawDiscussion{}, err
 	}
 
 	res, err := decodeResponse(resp, RawDiscussion{})
 
 	if err != nil {
-		fmt.Printf("[COMMENT-CACHE] Error reading comments for: %d, error: %s\n", id, err)
+		Printf("[COMMENT-CACHE] Error reading comments for: %d, error: %s\n", id, err)
 		return RawDiscussion{}, err
 	}
 
@@ -58,21 +58,21 @@ func scanDiscussion(id uint32) (RawDiscussion, error) {
 
 func scanAllDiscussions() error {
 	start := time.Now().UnixMicro()
-	fmt.Println("[COMMENT-CACHE] Starting discussion scan...")
+	Println("[COMMENT-CACHE] Starting discussion scan...")
 	resp, err := http.Get(*server + "discussion/index.get.php")
 	if err != nil {
-		fmt.Println("[COMMENT-CACHE] Error getting Discussions:", err)
+		Println("[COMMENT-CACHE] Error getting Discussions:", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	rawDiscussions, err := decodeResponse[[]RawDiscussionList](resp, nil)
 	if err != nil {
-		fmt.Println("[COMMENT-CACHE] Error decoding Discussion list:", err)
+		Println("[COMMENT-CACHE] Error decoding Discussion list:", err)
 		return err
 	}
 	if *timing {
-		fmt.Printf("[COMMENT-CACHE] Took %ds to get discussion list\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds())
+		Printf("[COMMENT-CACHE] Took %ds to get discussion list\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds())
 	}
 
 	// Get and deduplicate discussion ids
@@ -83,7 +83,7 @@ func scanAllDiscussions() error {
 		ids[id] = true
 	}
 	for _, discussion := range rawDiscussions {
-		id := conv[uint32](discussion.PostID)
+		id, _ := conv[uint32](discussion.PostID)
 
 		if !ids[id] {
 			ids[id] = true
@@ -101,7 +101,7 @@ func scanAllDiscussions() error {
 	// Data storage
 	newDiscussions := make([]Discussion, len(discussionIds))
 	discussionComments := make([][]RawComment, len(discussionIds))
-	newMap := []Username{}
+	newMap := make([]Username, len(discussionIds))
 
 	for i, discussion := range discussionIds {
 		guard <- struct{}{}
@@ -111,21 +111,22 @@ func scanAllDiscussions() error {
 				discussionComments[i] = result.Comments
 				discussionTime, err := time.Parse("2006-01-02 15:04:05", result.TimePosted)
 				if err != nil {
-					fmt.Println("[COMMENT-CACHE] Error parsing time:", err)
+					Println("[COMMENT-CACHE] Error parsing time:", err)
 					numErrors.Add(1)
 				} else {
+					discussionTime = discussionTime.Add(-time.Hour * 2)
 					newDiscussions[i] = Discussion{
-						ID:        conv[uint32](result.PostID),
-						UserID:    conv[uint32](result.UserID),
+						ID:        id,
+						UserID:    unsafeConv[uint32](result.UserID),
 						Title:     result.PostTitle,
 						Type:      toPostType(result.PostType),
 						Content:   result.PostContent,
 						Timestamp: discussionTime,
 					}
-					newMap = append(newMap, Username{ID: conv[uint32](result.UserID), Name: result.Username})
+					newMap[i] = Username{ID: unsafeConv[uint32](result.UserID), Name: result.Username}
 
 					if *verbose {
-						fmt.Printf("[COMMENT-CACHE] (%d/%d) Successfully scanned %s\n", i, len(rawDiscussions), result.PostTitle)
+						Printf("[COMMENT-CACHE] (%d/%d) Successfully scanned %s\n", i, len(rawDiscussions), result.PostTitle)
 					}
 				}
 			} else {
@@ -138,8 +139,8 @@ func scanAllDiscussions() error {
 	wg.Wait()
 
 	if *timing {
-		fmt.Printf("[COMMENT-CACHE] Took %ds to scan %d discussions\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds(), len(discussionIds))
-		fmt.Printf("[COMMENT-CACHE] That's an average of %dμs per discussion\n", (time.Now().UnixMicro()-start)/int64(len(rawDiscussions)))
+		Printf("[COMMENT-CACHE] Took %ds to scan %d discussions\n", (time.Now().UnixMicro()-start)/time.Second.Microseconds(), len(discussionIds))
+		Printf("[COMMENT-CACHE] That's an average of %dμs per discussion\n", (time.Now().UnixMicro()-start)/int64(len(rawDiscussions)))
 	}
 
 	scanTime.WithLabelValues("discussion").Set(float64((time.Now().UnixMicro() - start) / time.Millisecond.Microseconds()))
@@ -151,25 +152,25 @@ func scanAllDiscussions() error {
 		for _, comment := range discussion {
 			if int16(len(comment.Replies)) > comment.ReplyLimit {
 				wg.Add(1)
+				numberRequests++
 				guard <- struct{}{}
-				go func(name string, comment *RawComment) {
-					err = getReplies(comment, "discussion/post.reply.get.php")
+				go func(name string, comment RawComment) {
+					err := getReplies(comment, "discussion/post.reply.get.php")
 					if err != nil {
 						numErrors.Add(1)
-						fmt.Printf("[COMMENT-CACHE] On %s err: %s\n", name, err)
+						Printf("[COMMENT-CACHE] On %s err: %s\n", name, err)
 					}
-					numberRequests++
 					<-guard
 					wg.Done()
-				}(newDiscussions[i].Title, &comment)
+				}(newDiscussions[i].Title, comment)
 			}
 		}
 	}
 	wg.Wait()
 
 	if *timing {
-		fmt.Printf("[COMMENT-CACHE] Took %dms to get replies for %d comments\n", (time.Now().UnixMicro()-start)/time.Millisecond.Microseconds(), numberRequests)
-		fmt.Printf("[COMMENT-CACHE] That's an average of %dμs per reply\n", (time.Now().UnixMicro()-start)/int64(numberRequests))
+		Printf("[COMMENT-CACHE] Took %dms to get replies for %d comments\n", (time.Now().UnixMicro()-start)/time.Millisecond.Microseconds(), numberRequests)
+		Printf("[COMMENT-CACHE] That's an average of %dμs per reply\n", (time.Now().UnixMicro()-start)/int64(numberRequests))
 	}
 
 	// create a rough map of UserIDs to usernames
@@ -177,20 +178,21 @@ func scanAllDiscussions() error {
 	for _, discussion := range discussionComments {
 		for _, comment := range discussion {
 			for _, reply := range comment.Replies {
+				if unsafeConv[uint32](reply.UserID) != 0 {
+					newMap = append(newMap, Username{ID: unsafeConv[uint32](reply.UserID), Name: reply.Username})
+				}
+			}
+			if unsafeConv[uint32](comment.UserID) != 0 {
 				newMap = append(newMap, Username{
-					ID:   conv[uint32](reply.UserID),
-					Name: reply.Username,
+					ID:   unsafeConv[uint32](comment.UserID),
+					Name: comment.Username,
 				})
 			}
-			newMap = append(newMap, Username{
-				ID:   conv[uint32](comment.UserID),
-				Name: comment.Username,
-			})
 		}
 	}
 
 	if *timing {
-		fmt.Printf("[COMMENT-CACHE] Took %dμs to extract usernames\n", time.Now().UnixMicro()-start)
+		Printf("[COMMENT-CACHE] Took %dμs to extract usernames\n", time.Now().UnixMicro()-start)
 	}
 
 	start = time.Now().UnixMicro()
@@ -209,7 +211,7 @@ func scanAllDiscussions() error {
 	userCounterVal = float64(len(userMap))
 
 	if *timing {
-		fmt.Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d users\n", time.Now().UnixMicro()-start, len(userMap))
+		Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d users\n", time.Now().UnixMicro()-start, len(userMap))
 	}
 
 	start = time.Now().UnixMicro()
@@ -222,7 +224,7 @@ func scanAllDiscussions() error {
 	cleanComments()
 
 	if *timing {
-		fmt.Printf("[COMMENT-CACHE] Took %dμs to create a proper tree of comments and replies\n", time.Now().UnixMicro()-start)
+		Printf("[COMMENT-CACHE] Took %dμs to create a proper tree of comments and replies\n", time.Now().UnixMicro()-start)
 	}
 
 	start = time.Now().UnixMicro()
@@ -239,7 +241,7 @@ func scanAllDiscussions() error {
 	discussions = dedupedDiscussions
 
 	if *timing {
-		fmt.Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d discussions\n", time.Now().UnixMicro()-start, len(discussions))
+		Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d discussions\n", time.Now().UnixMicro()-start, len(discussions))
 	}
 
 	// Write to file

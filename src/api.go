@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func getReplies(comment *RawComment, url string) error {
+func getReplies(comment RawComment, url string) error {
 	postBody, _ := json.Marshal(map[string]string{
 		"TargetID": comment.CommentID,
 	})
@@ -31,7 +31,7 @@ func getReplies(comment *RawComment, url string) error {
 		return fmt.Errorf("status code is bad for replies commentID: %s, result: %s", comment.CommentID, string(data))
 	}
 	if *verbose {
-		fmt.Printf("[COMMENT-CACHE] Successfully scanned commentID: %s from: %s replies: %d\n", comment.CommentID, url, len(replies.Val))
+		Printf("[COMMENT-CACHE] Successfully scanned commentID: %s from: %s replies: %d\n", comment.CommentID, url, len(replies.Val))
 	}
 	comment.Replies = replies.Val
 	return nil
@@ -61,15 +61,16 @@ func decodeComments(comments []RawComment, discussionID uint32, mangaName string
 	for _, comment := range comments {
 		commentTime, err := time.Parse("2006-01-02 15:04:05", comment.TimeCommented)
 		if err != nil {
-			fmt.Println("[COMMENT-CACHE] Error parsing time:", err)
+			Println("[COMMENT-CACHE] Error parsing time:", err)
 			numErrors.Add(1)
 			continue
 		}
+		commentTime = commentTime.Add(-time.Hour * 2)
 		newcomment := Comment{
-			ID:           conv[uint32](comment.CommentID),
-			UserID:       conv[uint32](comment.UserID),
+			ID:           unsafeConv[uint32](comment.CommentID),
+			UserID:       unsafeConv[uint32](comment.UserID),
 			Content:      comment.CommentContent,
-			Likes:        conv[int16](comment.LikeCount),
+			Likes:        unsafeConv[int16](comment.LikeCount),
 			Timestamp:    commentTime,
 			DiscussionID: discussionID,
 			MangaName:    mangaName,
@@ -77,17 +78,17 @@ func decodeComments(comments []RawComment, discussionID uint32, mangaName string
 		for _, reply := range comment.Replies {
 			commentTime, err := time.Parse("2006-01-02 15:04:05", reply.TimeCommented)
 			if err != nil {
-				fmt.Println("[COMMENT-CACHE] Error parsing time:", err)
+				Println("[COMMENT-CACHE] Error parsing time:", err)
 				numErrors.Add(1)
 				continue
 			}
+			commentTime = commentTime.Add(-time.Hour * 2)
 
 			newreply := Reply{
-				ID:        conv[uint32](reply.CommentID),
-				UserID:    conv[uint32](reply.UserID),
+				ID:        unsafeConv[uint32](reply.CommentID),
+				UserID:    unsafeConv[uint32](reply.UserID),
 				Content:   reply.CommentContent,
 				Timestamp: commentTime,
-				CommentID: conv[uint32](comment.CommentID),
 			}
 			newcomment.Replies = append(newcomment.Replies, newreply)
 		}

@@ -56,11 +56,11 @@ func (s PostType) IsValid() bool {
 }
 
 type Discussion struct {
-	ID        uint32    `json:"post_id"`
+	ID        uint32    `json:"id"`
 	UserID    uint32    `json:"user_id"`
-	Title     string    `json:"post_title"`
-	Type      PostType  `json:"post_type"`
-	Content   string    `json:"post_content"`
+	Title     string    `json:"title"`
+	Type      PostType  `json:"type"`
+	Content   string    `json:"content"`
 	Timestamp time.Time `json:"timestamp"`
 }
 type Comment struct {
@@ -78,7 +78,6 @@ type Reply struct {
 	UserID    uint32    `json:"user_id"`
 	Content   string    `json:"content"`
 	Timestamp time.Time `json:"timestamp"`
-	CommentID uint32    `json:"comment_id"`
 }
 type Username struct {
 	ID   uint32 `json:"id"`
