@@ -20,3 +20,5 @@ cache.json
 bin
 comment-cache.pid
 comment-cache.log
+
+tls.go

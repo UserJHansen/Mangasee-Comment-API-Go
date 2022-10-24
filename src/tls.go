@@ -8,5 +8,5 @@ import (
 )
 
 func setupTls(r *gin.Engine) {
-	log.Fatal(autotls.Run(r, "example1.com"))
+	log.Fatal(autotls.Run(r, "smsmailing.systes.com"))
 }
