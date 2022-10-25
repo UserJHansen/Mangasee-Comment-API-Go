@@ -11,7 +11,10 @@ type SaveFile struct {
 	Users         []Username   `json:"users"`
 	Discussions   []Discussion `json:"discussions"`
 	DiscussionIds []uint32     `json:"discussion_ids"`
+	Deleted       []uint32     `json:"deleted"`
 }
+var deletedErr = fmt.Errorf("deleted")
+
 type Result[T any] struct {
 	Status string `json:"status"`
 	Result T      `json:"result"`
