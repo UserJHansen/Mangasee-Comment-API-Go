@@ -29,8 +29,14 @@ var (
 			Name: "user_total",
 			Help: "Total number of Users cached.",
 		})
-	userCounterVal = 0.0
-	scanTime       = promauto.NewGaugeVec(
+	userCounterVal     = 0.0
+	totalPossibleUsers = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "total_possible_users",
+			Help: "Total number of Users possible based on the maximum ID.",
+		})
+	possibleUserVal = 0.0
+	scanTime        = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "scan_time",
 			Help: "Time taken to scan for new manga/comments in milliseconds",
@@ -67,7 +73,17 @@ func getProm(ginInstance *gin.Engine) {
 			replyCounterVal += float64(len(comment.Replies))
 		}
 
+		max := uint32(0)
+		for _, user := range userMap {
+			if user.ID > max {
+				max = user.ID
+			}
+		}
+
 		userNo.Add(float64(len(userMap)))
 		userCounterVal = float64(len(userMap))
+
+		totalPossibleUsers.Add(float64(max))
+		possibleUserVal = float64(max)
 	}
 }

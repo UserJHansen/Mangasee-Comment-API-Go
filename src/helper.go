@@ -12,6 +12,15 @@ func unsafeConv[T uint | int | uint8 | uint16 | uint32 | uint64 | int8 | int16 |
 	return T(val)
 }
 
+func deletedCheck(id uint32) bool {
+	for _, deletedId := range deleted {
+		if id == deletedId {
+			return true
+		}
+	}
+	return false
+}
+
 func cleanComments() {
 	// Deduplicate the comments
 	keys := make(map[int]bool)

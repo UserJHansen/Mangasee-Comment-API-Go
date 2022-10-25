@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -46,6 +47,9 @@ func decodeResponse[T []RawComment | []RawDiscussionList | RawDiscussion](resp *
 
 	var response Response[T]
 	if err := json.Unmarshal(res, &response); err != nil {
+		if strings.Contains(string(res), "not found") {
+			return def, deletedErr
+		}
 		return def, fmt.Errorf("error decoding json, error: %s", err)
 	}
 	if !response.Success {
