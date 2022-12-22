@@ -136,16 +136,22 @@ func scanAllManga() error {
 	// Deduplicate the map and update Prom
 	newMap = append(newMap, userMap...)
 	keys := make(map[int]bool)
+	max := uint32(0)
 	dedupedUsers := []Username{}
 	for _, entry := range newMap {
 		if _, value := keys[int(entry.ID)]; !value {
 			keys[int(entry.ID)] = true
 			dedupedUsers = append(dedupedUsers, entry)
+			if entry.ID > max {
+				max = entry.ID
+			}
 		}
 	}
 	userMap = dedupedUsers
 	userNo.Add(float64(len(userMap)) - userCounterVal)
 	userCounterVal = float64(len(userMap))
+	totalPossibleUsers.Add(float64(max) - possibleUserVal)
+	possibleUserVal = float64(max)
 
 	if *timing {
 		Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d users\n", time.Now().UnixMicro()-start, len(userMap))

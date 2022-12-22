@@ -35,6 +35,10 @@ type DiscussionResponse Response[[]RawDiscussion]
 type DiscussionListResponse Response[[]RawDiscussionList]
 
 func scanDiscussion(id uint32) (RawDiscussion, error) {
+	if deletedCheck(id) {
+		return RawDiscussion{}, deletedErr
+	}
+
 	values := map[string]string{"id": fmt.Sprintf("%d", id)}
 	json_data, _ := json.Marshal(values)
 
@@ -49,6 +53,14 @@ func scanDiscussion(id uint32) (RawDiscussion, error) {
 	res, err := decodeResponse(resp, RawDiscussion{})
 
 	if err != nil {
+		if err == deletedErr {
+			if !deletedCheck(id) {
+				deleted = append(deleted, id)
+			}
+
+			return RawDiscussion{}, err
+		}
+
 		Printf("[COMMENT-CACHE] Error reading comments for: %d, error: %s\n", id, err)
 		return RawDiscussion{}, err
 	}
@@ -129,6 +141,10 @@ func scanAllDiscussions() error {
 						Printf("[COMMENT-CACHE] (%d/%d) Successfully scanned %s\n", i, len(rawDiscussions), result.PostTitle)
 					}
 				}
+			} else if err == deletedErr {
+				if *verbose {
+					Printf("[COMMENT-CACHE] (%d/%d) Deleted discussion: %d\n", i, len(rawDiscussions), id)
+				}
 			} else {
 				numErrors.Add(1)
 			}
@@ -199,16 +215,22 @@ func scanAllDiscussions() error {
 	// Deduplicate the map and update Prom
 	newMap = append(newMap, userMap...)
 	keys := make(map[int]bool)
+	max := uint32(0)
 	dedupedUsers := []Username{}
 	for _, entry := range newMap {
 		if _, value := keys[int(entry.ID)]; !value {
 			keys[int(entry.ID)] = true
 			dedupedUsers = append(dedupedUsers, entry)
+			if entry.ID > max {
+				max = entry.ID
+			}
 		}
 	}
 	userMap = dedupedUsers
 	userNo.Add(float64(len(userMap)) - userCounterVal)
 	userCounterVal = float64(len(userMap))
+	totalPossibleUsers.Add(float64(max) - possibleUserVal)
+	possibleUserVal = float64(max)
 
 	if *timing {
 		Printf("[COMMENT-CACHE] Took %dμs to deduplicate %d users\n", time.Now().UnixMicro()-start, len(userMap))

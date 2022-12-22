@@ -23,7 +23,7 @@
                 "Build"
             ],
             "type": "shell",
-            "command": "sudo rm -v /usr/local/bin/comment-cache && sudo mv -v ./bin/comment-cache /usr/local/bin && sudo chown root:root /usr/local/bin/comment-cache",
+            "command": "sudo rm -v /usr/local/bin/comment-cache && sudo mv -v ./bin/comment-cache /usr/local/bin && sudo chown root:root /usr/local/bin/comment-cache && sudo setcap cap_net_bind_service+ep /usr/local/bin/comment-cache",
             "presentation": {
                 "echo": true,
                 "reveal": "always",

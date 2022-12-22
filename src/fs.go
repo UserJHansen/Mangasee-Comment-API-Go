@@ -12,6 +12,7 @@ func save() error {
 		Users:         userMap,
 		Discussions:   discussions,
 		DiscussionIds: discussionIds,
+		Deleted:       deleted,
 	}, "", "  ")
 	if err != nil {
 		numErrors.Add(1)
@@ -42,6 +43,7 @@ func load() error {
 	userMap = saveData.Users
 	discussions = saveData.Discussions
 	discussionIds = saveData.DiscussionIds
+	deleted = saveData.Deleted
 
 	Println("[COMMENT-CACHE] Reading Config")
 	return nil

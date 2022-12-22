@@ -38,6 +38,7 @@ var (
 	userMap       = []Username{}
 	discussions   = []Discussion{}
 	discussionIds = []uint32{}
+	deleted 	 = []uint32{}
 	out           = io.MultiWriter(os.Stdout)
 )
 
